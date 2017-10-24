@@ -7,6 +7,8 @@
 //
 #import "CycleScrollView.h"
 
+static const NSInteger ImageViewTag = 100000;
+
 @interface CycleScrollView ()
 
 @property(nonatomic, strong) UIScrollView *scrollView;
@@ -23,7 +25,7 @@
     self = [super initWithFrame:frame];
     if(self) {
         self.scrollDirection = direction;
-        self.currentPage = 0;                                    // 显示的是图片数组里的第一张图片
+        self.currentPage = 0;
         self.images = images;
         
         [self addSubview:self.scrollView];
@@ -79,19 +81,22 @@
         // 往下翻一张
         if(contentOffsetX >= (2 * self.scrollView.bounds.size.width)) {
             self.currentPage = [self getCurrentPage:self.currentPage + 1];
+            [self refreshScrollView];
         } else if (contentOffsetX <= 0) {
             self.currentPage = [self getCurrentPage:self.currentPage - 1];
+            [self refreshScrollView];
         }
     } else if (self.scrollDirection == CycleDirectionPortait) {// 垂直滚动
         CGFloat contentOffsetY = scrollView.contentOffset.y;
         // 往下翻一张
         if(contentOffsetY >= 2 * (self.scrollView.bounds.size.height)) {
             self.currentPage = [self getCurrentPage:self.currentPage + 1];
+            [self refreshScrollView];
         } else if(contentOffsetY <= 0) {
             self.currentPage = [self getCurrentPage:self.currentPage - 1];
+            [self refreshScrollView];
         }
     }
-    [self refreshScrollView];
 
     if ([self.delegate respondsToSelector:@selector(cycleScrollViewDelegate:didScrollImageView:)]) {
         [self.delegate cycleScrollViewDelegate:self didScrollImageView:self.currentPage];
@@ -120,11 +125,6 @@
         return;
     }
     
-    NSArray *subViews = [self.scrollView subviews];
-    if([subViews count] != 0) {
-        [subViews makeObjectsPerformSelector:@selector(removeFromSuperview)];
-    }
-    
     NSArray *currentDisplayImages = [self getDisplayImages];
     [self displayImages:currentDisplayImages];
     
@@ -138,19 +138,22 @@
 - (void)displayImages:(NSArray *)images
 {
     for (int index = 0; index < [images count]; index++) {
-        UIImageView *imageView = [[UIImageView alloc] init];
-        imageView.userInteractionEnabled = YES;
-        UITapGestureRecognizer *tapGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTap:)];
-        [imageView addGestureRecognizer:tapGestureRecognizer];
+        UIImageView *imageView = [self.scrollView viewWithTag:ImageViewTag + index];
+        if (!imageView) {
+            imageView = [[UIImageView alloc] init];
+            imageView.tag = ImageViewTag + index;
+            imageView.userInteractionEnabled = YES;
+            UITapGestureRecognizer *tapGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTap:)];
+            [imageView addGestureRecognizer:tapGestureRecognizer];
+            [self.scrollView addSubview:imageView];
+        }
         
         if(self.scrollDirection == CycleDirectionLandscape) {    // 水平滚动
             imageView.frame = CGRectMake(self.scrollView.bounds.size.width * index, 0, self.scrollView.bounds.size.width, self.scrollView.bounds.size.height);
         } else if(self.scrollDirection == CycleDirectionPortait) { // 垂直滚动
             imageView.frame = CGRectMake(0, self.scrollView.bounds.size.height * index, self.scrollView.bounds.size.width, self.scrollView.bounds.size.height);
         }
-        
         imageView.image = [images objectAtIndex:index];
-        [self.scrollView addSubview:imageView];
     }
 }
 
